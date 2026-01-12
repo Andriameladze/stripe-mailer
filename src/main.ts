@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
+import { json, raw } from 'body-parser';
 import { AppModule } from './app.module';
-import { raw, json } from 'body-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {

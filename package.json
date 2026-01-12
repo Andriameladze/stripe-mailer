@@ -25,6 +25,8 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "body-parser": "^2.2.1",
+    "dotenv": "^17.2.3",
+    "facebook-nodejs-business-sdk": "^24.0.1",
     "nodemailer": "^7.0.12",
     "reflect-metadata": "^0.2.2",
     "resend": "^6.6.0",
