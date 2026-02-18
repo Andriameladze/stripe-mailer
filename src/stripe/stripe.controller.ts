@@ -5,6 +5,7 @@ import express from 'express';
 import Stripe from 'stripe';
 import { EmailService } from '../email/email.service';
 import { MetaPixelService } from '../meta-pixel/meta-pixel.service';
+import { getProductConfig } from './product-configs';
 
 @Controller('stripe')
 export class StripeController {
@@ -37,15 +38,29 @@ export class StripeController {
 
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
+      const paymentLinkId = session.payment_link as string | null;
+
+      if (!paymentLinkId) {
+        this.logger.warn(
+          'checkout.session.completed received with no payment_link — skipping',
+        );
+        return res.json({ received: true });
+      }
+
+      const productConfig = getProductConfig(paymentLinkId);
+
+      if (!productConfig) {
+        this.logger.warn(
+          `Unknown payment link: ${paymentLinkId} — no product config found`,
+        );
+        return res.json({ received: true });
+      }
 
       const email = session.customer_details?.email || session.customer_email;
 
       if (email) {
-        // Send email with digital products
-        await this.email.sendEmail(email);
-        console.log('I enter here');
+        await this.email.sendEmail(email, productConfig.email);
 
-        // Send Meta Pixel purchase event
         const amount = session.amount_total ? session.amount_total / 100 : 0;
         const currency = session.currency?.toUpperCase() || 'USD';
         const orderId = session.id;
@@ -58,9 +73,14 @@ export class StripeController {
           eventSourceUrl: session.success_url || undefined,
           userAgent: req.headers['user-agent'],
           ipAddress: req.ip || req.socket.remoteAddress,
+          contentName: productConfig.meta.contentName,
+          contentCategory: productConfig.meta.contentCategory,
+          pixelId: productConfig.meta.pixelId,
         });
 
-        this.logger.log(`Processed order: ${orderId} for ${email}`);
+        this.logger.log(
+          `Processed order: ${orderId} for ${email} (${productConfig.name})`,
+        );
       }
     }
 

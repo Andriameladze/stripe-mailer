@@ -2,8 +2,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Injectable, Logger } from '@nestjs/common';
-import * as bizSdk from 'facebook-nodejs-business-sdk';
 import * as crypto from 'crypto';
+import * as bizSdk from 'facebook-nodejs-business-sdk';
 
 const ServerEvent = bizSdk.ServerEvent;
 const EventRequest = bizSdk.EventRequest;
@@ -18,6 +18,9 @@ interface PurchaseData {
   eventSourceUrl?: string;
   userAgent?: string;
   ipAddress?: string;
+  contentName?: string;
+  contentCategory?: string;
+  pixelId?: string;
 }
 
 @Injectable()
@@ -60,7 +63,7 @@ export class MetaPixelService {
 
       // Initialize Meta Pixel API
       bizSdk.FacebookAdsApi.init(process.env.META_ACCESS_TOKEN);
-      const pixelId = process.env.META_PIXEL_ID;
+      const pixelId = data.pixelId;
       const accessToken = process.env.META_ACCESS_TOKEN;
 
       // Hash email for privacy
@@ -78,6 +81,10 @@ export class MetaPixelService {
         .setCurrency(data.currency)
         .setOrderId(data.orderId);
 
+      if (data.contentName) customData.setContentName(data.contentName);
+      if (data.contentCategory)
+        customData.setContentCategory(data.contentCategory);
+
       // Create server event
       const serverEvent = new ServerEvent()
         .setEventName('Purchase')
@@ -90,7 +97,9 @@ export class MetaPixelService {
 
       // Add test event code if in test mode
       if (this.isTestMode && process.env.META_TEST_EVENT_CODE) {
-        this.logger.log(`Sending TEST event for order: ${data.orderId}`);
+        this.logger.log(
+          `Sending TEST event for order: ${data.orderId} with pixelId: ${data.pixelId}`,
+        );
       }
 
       // Create event request
