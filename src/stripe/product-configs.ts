@@ -118,7 +118,7 @@ function buildRegistry(): Record<string, ProductConfig> {
     registry[process.env.CNC_LINK] = {
       name: 'CNC Bundle',
       email: {
-        subject: 'Order - CNC Planet',
+        subject: 'Order - STL Planet',
         html: CNC_EMAIL_HTML,
         attachmentFilenames: [
           // TODO: add CNC-specific PDF filenames here
@@ -127,7 +127,7 @@ function buildRegistry(): Record<string, ProductConfig> {
       meta: {
         contentName: 'CNC Bundle',
         contentCategory: 'CNC',
-        pixelId: process.env.CNC_PIXEL_ID,
+        pixelId: process.env.STL_PIXEL_ID, // Because its same with STL
       },
     };
   }
