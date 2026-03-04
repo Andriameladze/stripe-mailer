@@ -66,17 +66,25 @@ const STL_EMAIL_HTML = `<div>\
 const CNC_EMAIL_HTML = `<div>\
 <p style="margin:0 0 12px;">Hi 👋</p>\
 <p style="margin:0 0 12px;">Thank you for your purchase!</p>\
-<p style="margin:0 0 16px;">Your <strong>CNC Bundle</strong> is ready.</p>\
+<p style="margin:0 0 16px;">Your <strong>50,000+ CNC Bundle</strong> is ready.</p>\
 <p style="margin:0 0 10px;"><strong>📦 How to access your files:</strong></p>\
-<p style="margin:0 0 12px;">Your download links and files are attached below.</p>\
+<p style="margin:0 0 12px;">Please click the button below</p>\
+<div style="margin:10px 0 12px;">\
+<a href="https://drive.google.com/drive/folders/12cBAAzcIZhcSxvc6JVcvKWwQVGeafWYY"\
+style="display:inline-block;padding:12px 16px;background:#0b0f17;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;">Open</a>\
+</div>\
+<p style="margin:0 0 16px;">Or open it here:<br />\
+<a href="https://drive.google.com/drive/folders/12cBAAzcIZhcSxvc6JVcvKWwQVGeafWYY" style="color:#1155cc;text-decoration:underline;word-break:break-word;">https://drive.google.com/drive/folders/12cBAAzcIZhcSxvc6JVcvKWwQVGeafWYY</a>\
+</p>\
 <p style="margin:0 0 10px;"><strong>⚠️ Important notes:</strong></p>\
 <ul style="margin:0 0 16px 20px;padding:0;">\
 <li>This is a digital product (no physical shipment)</li>\
+<li>Make sure you have enough storage space before downloading</li>\
 <li>Lifetime access, including future updates</li>\
 <li>If any link ever stops working, just reply to this email</li>\
 </ul>\
-<p style="margin:0 0 4px;">Enjoy cutting 🚀</p>\
-<p style="margin:0;">— CNC Planet</p>\
+<p style="margin:0 0 4px;">Enjoy printing 🚀</p>\
+<p style="margin:0;">— STL Planet</p>\
 </div>`;
 
 // ---------------------------------------------------------------------------
