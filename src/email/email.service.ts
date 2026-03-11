@@ -28,7 +28,7 @@ export class EmailService {
     await this.resend.emails.send({
       from: process.env.MAIL_FROM!,
       to: process.env.MY_EMAIL!,
-      subject: `✅ Order Delivered — ${config.subject}`,
+      subject: `✅ Order Delivered — ${config.project}`,
       html: `<p>Order was successfully delivered to <strong>${customerEmail}</strong></p>`,
     });
   }

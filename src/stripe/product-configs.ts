@@ -1,4 +1,5 @@
 export interface ProductEmailConfig {
+  project: string;
   subject: string;
   html: string;
   /** Filenames relative to the assets/ directory */
@@ -98,6 +99,7 @@ function buildRegistry(): Record<string, ProductConfig> {
     registry[process.env.STL_LINK] = {
       name: 'STL Planet Bundle',
       email: {
+        project: 'STL Bundle',
         subject: 'Order - STL Planet',
         html: STL_EMAIL_HTML,
         attachmentFilenames: [
@@ -118,6 +120,7 @@ function buildRegistry(): Record<string, ProductConfig> {
     registry[process.env.CNC_LINK] = {
       name: 'CNC Bundle',
       email: {
+        project: 'CNC Bundle',
         subject: 'Order - STL Planet',
         html: CNC_EMAIL_HTML,
         attachmentFilenames: [
