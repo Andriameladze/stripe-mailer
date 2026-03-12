@@ -29,7 +29,7 @@ export class EmailService {
       from: process.env.MAIL_FROM!,
       to: process.env.MY_EMAIL!,
       subject: `✅ Order Delivered — ${config.project}`,
-      html: `<p>Order was successfully delivered to <strong>${customerEmail}</strong></p>`,
+      html: `<p>✅ Order was successfully delivered to <strong>${customerEmail}</strong></p>`,
     });
   }
 }
