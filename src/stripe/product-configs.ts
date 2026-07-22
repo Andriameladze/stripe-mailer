@@ -102,11 +102,7 @@ function buildRegistry(): Record<string, ProductConfig> {
         project: 'STL Bundle',
         subject: 'Order - STL Planet',
         html: STL_EMAIL_HTML,
-        attachmentFilenames: [
-          'STLULTIMATEPACK1.pdf',
-          'FLEXIFILES.pdf',
-          'ChristmasSTlBundle.pdf',
-        ],
+        attachmentFilenames: ['FLEXIFILES.pdf', 'ChristmasSTlBundle.pdf'],
       },
       meta: {
         contentName: 'STL Planet Bundle',
