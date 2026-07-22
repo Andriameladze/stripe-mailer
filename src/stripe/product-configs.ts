@@ -34,7 +34,7 @@ const STL_EMAIL_HTML = `<div>\
 <li>Visual previews of models</li>\
 <li>Well-organized categories</li>\
 <li>Direct download links</li>\
-<li>Covers almost everything included in the PDF files</li>\
+<li>Includes a large portion of the collection</li>\
 <li>Fast and easy navigation through the collection</li>\
 </ul>\
 <div style="margin:10px 0 12px;">\
@@ -47,7 +47,7 @@ const STL_EMAIL_HTML = `<div>\
 <p style="margin:0 0 10px;">You'll also find attached PDF files:</p>\
 <ul style="margin:0 0 16px 20px;padding:0;">\
 <li>Each PDF contains direct download links</li>\
-<li>Includes a large portion of the collection</li>\
+<li>Covers almost everything included in the spreadsheet</li>\
 <li>Useful as a backup or alternative access method</li>\
 </ul>\
 <p style="margin:0 0 10px;"><strong>⚠️ Important notes:</strong></p>\
