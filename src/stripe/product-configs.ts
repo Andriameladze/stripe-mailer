@@ -15,6 +15,10 @@ export interface ProductMetaConfig {
 export interface ProductConfig {
   /** Human-readable product name (for logging) */
   name: string;
+  /** Stable key used by the checkout-session endpoint (e.g. 'stl', 'cnc') */
+  productId: string;
+  /** Underlying Stripe Price ID used to create dynamic Checkout Sessions */
+  priceId?: string;
   email: ProductEmailConfig;
   meta: ProductMetaConfig;
 }
@@ -92,54 +96,87 @@ style="display:inline-block;padding:12px 16px;background:#0b0f17;color:#ffffff;t
 // Registry: add new products here by mapping their payment link env var value
 // to a ProductConfig. The lookup key is the raw payment link ID (plink_...).
 // ---------------------------------------------------------------------------
-function buildRegistry(): Record<string, ProductConfig> {
-  const registry: Record<string, ProductConfig> = {};
+const PRODUCTS: ProductConfig[] = [
+  {
+    name: 'STL Planet Bundle',
+    productId: 'stl',
+    priceId: process.env.STL_PRICE_ID,
+    email: {
+      project: 'STL Bundle',
+      subject: 'Order - STL Planet',
+      html: STL_EMAIL_HTML,
+      attachmentFilenames: ['FLEXIFILES.pdf', 'ChristmasSTlBundle.pdf'],
+    },
+    meta: {
+      contentName: 'STL Planet Bundle',
+      contentCategory: '3D Printing',
+      pixelId: process.env.STL_PIXEL_ID,
+    },
+  },
+  {
+    name: 'CNC Bundle',
+    productId: 'cnc',
+    priceId: process.env.CNC_PRICE_ID,
+    email: {
+      project: 'CNC Bundle',
+      subject: 'Order - STL Planet',
+      html: CNC_EMAIL_HTML,
+      attachmentFilenames: [
+        // TODO: add CNC-specific PDF filenames here
+      ],
+    },
+    meta: {
+      contentName: 'CNC Bundle',
+      contentCategory: 'CNC',
+      pixelId: process.env.STL_PIXEL_ID, // Because its same with STL
+    },
+  },
+];
 
+function buildRegistries(): {
+  byPaymentLink: Record<string, ProductConfig>;
+  byProductId: Record<string, ProductConfig>;
+} {
+  const byPaymentLink: Record<string, ProductConfig> = {};
+  const byProductId: Record<string, ProductConfig> = {};
+
+  for (const product of PRODUCTS) {
+    byProductId[product.productId] = product;
+  }
+
+  // Legacy Payment Link lookup — kept during the migration to dynamic
+  // Checkout Sessions so in-flight/old Payment Links still resolve.
   if (process.env.STL_LINK) {
-    registry[process.env.STL_LINK] = {
-      name: 'STL Planet Bundle',
-      email: {
-        project: 'STL Bundle',
-        subject: 'Order - STL Planet',
-        html: STL_EMAIL_HTML,
-        attachmentFilenames: ['FLEXIFILES.pdf', 'ChristmasSTlBundle.pdf'],
-      },
-      meta: {
-        contentName: 'STL Planet Bundle',
-        contentCategory: '3D Printing',
-        pixelId: process.env.STL_PIXEL_ID,
-      },
-    };
+    byPaymentLink[process.env.STL_LINK] = byProductId['stl'];
   }
-
   if (process.env.CNC_LINK) {
-    registry[process.env.CNC_LINK] = {
-      name: 'CNC Bundle',
-      email: {
-        project: 'CNC Bundle',
-        subject: 'Order - STL Planet',
-        html: CNC_EMAIL_HTML,
-        attachmentFilenames: [
-          // TODO: add CNC-specific PDF filenames here
-        ],
-      },
-      meta: {
-        contentName: 'CNC Bundle',
-        contentCategory: 'CNC',
-        pixelId: process.env.STL_PIXEL_ID, // Because its same with STL
-      },
-    };
+    byPaymentLink[process.env.CNC_LINK] = byProductId['cnc'];
   }
 
-  return registry;
+  return { byPaymentLink, byProductId };
 }
 
-let _registry: Record<string, ProductConfig> | null = null;
+let _byPaymentLink: Record<string, ProductConfig> | null = null;
+let _byProductId: Record<string, ProductConfig> | null = null;
 
-/** Returns the config for a given payment link ID, or null if unknown. */
-export function getProductConfig(paymentLinkId: string): ProductConfig | null {
-  if (!_registry) {
-    _registry = buildRegistry();
+function ensureRegistries() {
+  if (!_byPaymentLink || !_byProductId) {
+    const built = buildRegistries();
+    _byPaymentLink = built.byPaymentLink;
+    _byProductId = built.byProductId;
   }
-  return _registry[paymentLinkId] ?? null;
+}
+
+/** Returns the config for a given (legacy) payment link ID, or null if unknown. */
+export function getProductConfig(paymentLinkId: string): ProductConfig | null {
+  ensureRegistries();
+  return _byPaymentLink![paymentLinkId] ?? null;
+}
+
+/** Returns the config for a given productId (used by the dynamic checkout-session flow). */
+export function getProductConfigByProductId(
+  productId: string,
+): ProductConfig | null {
+  ensureRegistries();
+  return _byProductId![productId] ?? null;
 }

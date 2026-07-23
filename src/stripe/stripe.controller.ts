@@ -5,7 +5,10 @@ import express from 'express';
 import Stripe from 'stripe';
 import { EmailService } from '../email/email.service';
 import { MetaPixelService } from '../meta-pixel/meta-pixel.service';
-import { getProductConfig } from './product-configs';
+import {
+  getProductConfig,
+  getProductConfigByProductId,
+} from './product-configs';
 
 @Controller('stripe')
 export class StripeController {
@@ -38,20 +41,24 @@ export class StripeController {
 
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
+      // metadata is embedded directly on the session object in the webhook
+      // payload — no need to re-fetch/expand the session to read it.
+      const metadata = session.metadata || {};
       const paymentLinkId = session.payment_link as string | null;
 
-      if (!paymentLinkId) {
-        this.logger.warn(
-          'checkout.session.completed received with no payment_link — skipping',
-        );
-        return res.json({ received: true });
-      }
-
-      const productConfig = getProductConfig(paymentLinkId);
+      // New flow: sessions created by POST /checkout/create-session carry
+      // productId in metadata. Legacy flow: sessions from a static Payment
+      // Link are matched by payment_link instead. Kept side by side during
+      // the migration off Payment Links.
+      const productConfig = metadata.productId
+        ? getProductConfigByProductId(metadata.productId)
+        : paymentLinkId
+          ? getProductConfig(paymentLinkId)
+          : null;
 
       if (!productConfig) {
         this.logger.warn(
-          `Unknown payment link: ${paymentLinkId} — no product config found`,
+          `checkout.session.completed with no matching product config (productId=${metadata.productId ?? 'none'}, paymentLink=${paymentLinkId ?? 'none'})`,
         );
         return res.json({ received: true });
       }
@@ -64,15 +71,26 @@ export class StripeController {
         const amount = session.amount_total ? session.amount_total / 100 : 0;
         const currency = session.currency?.toUpperCase() || 'USD';
         const orderId = session.id;
+        // eventId is minted by create-session at checkout start (crypto.randomUUID()),
+        // before Stripe's session even exists — see rationale in the accompanying
+        // report. Falls back to Stripe's session id for legacy Payment Link sessions,
+        // which never had an eventId minted.
+        const eventId = metadata.eventId || orderId;
 
         await this.metaPixel.sendPurchaseEvent({
           email,
           amount,
           currency,
           orderId,
+          eventId,
           eventSourceUrl: session.success_url || undefined,
-          userAgent: req.headers['user-agent'],
-          ipAddress: req.ip || req.socket.remoteAddress,
+          // Real customer IP/UA captured client-side by create-session, not
+          // req.ip/req.headers['user-agent'] here — this webhook request comes
+          // from Stripe's servers, not the customer's browser.
+          userAgent: metadata.userAgent || undefined,
+          ipAddress: metadata.ip || undefined,
+          fbc: metadata.fbc || undefined,
+          fbp: metadata.fbp || undefined,
           contentName: productConfig.meta.contentName,
           contentCategory: productConfig.meta.contentCategory,
           pixelId: productConfig.meta.pixelId,

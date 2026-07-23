@@ -15,9 +15,13 @@ interface PurchaseData {
   amount: number;
   currency: string;
   orderId: string;
+  /** Used as the ServerEvent event_id for Meta dedup; falls back to orderId if absent. */
+  eventId?: string;
   eventSourceUrl?: string;
   userAgent?: string;
   ipAddress?: string;
+  fbc?: string;
+  fbp?: string;
   contentName?: string;
   contentCategory?: string;
   pixelId?: string;
@@ -26,6 +30,11 @@ interface PurchaseData {
 @Injectable()
 export class MetaPixelService {
   private readonly logger = new Logger(MetaPixelService.name);
+  // KNOWN LIMITATION: in-memory only — dedup state is lost on restart and is
+  // not shared across multiple instances/replicas, so duplicate webhook
+  // deliveries across a restart or between replicas won't be caught. Fine for
+  // a single-instance deployment; needs a persistent/shared store (e.g. Redis)
+  // if this ever runs with >1 instance.
   private readonly processedEvents = new Set<string>();
   private readonly isTestMode: boolean;
 
@@ -46,10 +55,16 @@ export class MetaPixelService {
    * @returns Promise<boolean> Returns true if event was sent, false if duplicate
    */
   async sendPurchaseEvent(data: PurchaseData): Promise<boolean> {
+    // event_id is what Meta actually dedups on, so dedup checks/marking below
+    // key off it rather than orderId.
+    const eventId = data.eventId || data.orderId;
+
     try {
       // Check for duplicate
-      if (this.isDuplicate(data.orderId)) {
-        this.logger.warn(`Duplicate event detected for order: ${data.orderId}`);
+      if (this.isDuplicate(eventId)) {
+        this.logger.warn(
+          `Duplicate event detected for order: ${data.orderId} (eventId: ${eventId})`,
+        );
         return false;
       }
 
@@ -75,6 +90,9 @@ export class MetaPixelService {
         .setClientIpAddress(data.ipAddress)
         .setClientUserAgent(data.userAgent);
 
+      if (data.fbc) userData.setFbc(data.fbc);
+      if (data.fbp) userData.setFbp(data.fbp);
+
       // Create custom data with purchase details
       const customData = new CustomData()
         .setValue(data.amount)
@@ -88,7 +106,7 @@ export class MetaPixelService {
       // Create server event
       const serverEvent = new ServerEvent()
         .setEventName('Purchase')
-        .setEventId(data.orderId) // Critical for Meta deduplication
+        .setEventId(eventId) // Critical for Meta deduplication
         .setEventTime(Math.floor(Date.now() / 1000))
         .setUserData(userData)
         .setCustomData(customData)
@@ -117,7 +135,13 @@ export class MetaPixelService {
       const response = await eventRequest.execute();
 
       // Mark as processed
-      this.markAsProcessed(data.orderId);
+      this.markAsProcessed(eventId);
+
+      this.logger.log(
+        `Meta CAPI response for order ${data.orderId} (eventId: ${eventId}): ` +
+          `events_received=${response.events_received}, fbtrace_id=${response.fbtrace_id}, ` +
+          `messages=${JSON.stringify(response.messages)}`,
+      );
 
       this.logger.log(
         `✅ ${this.isTestMode ? 'TEST ' : ''}Purchase event sent for order: ${data.orderId}, Amount: ${data.currency} ${data.amount}`,
@@ -125,9 +149,17 @@ export class MetaPixelService {
 
       return true;
     } catch (error) {
+      // FacebookRequestError (thrown by the SDK on non-2xx/API errors) carries
+      // .status and .response (the parsed error body, which includes fbtrace_id)
+      // in addition to .message — log those too, we previously had zero visibility
+      // into partial failures or match-quality issues.
       this.logger.error(
-        `Failed to send purchase event: ${error.message}`,
-        error.stack,
+        `Failed to send purchase event for order ${data.orderId} (eventId: ${eventId}): ${error.message}`,
+        {
+          status: error.status,
+          response: error.response,
+          stack: error.stack,
+        },
       );
       return false;
     }

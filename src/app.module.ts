@@ -6,6 +6,7 @@ import { EmailService } from './email/email.service';
 import { EmailModule } from './email/email.module';
 import { StripeModule } from './stripe/stripe.module';
 import { MetaPixelModule } from './meta-pixel/meta-pixel.module';
+import { CheckoutModule } from './checkout/checkout.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { MetaPixelModule } from './meta-pixel/meta-pixel.module';
     EmailModule,
     StripeModule,
     MetaPixelModule,
+    CheckoutModule,
   ],
   controllers: [AppController],
   providers: [AppService, EmailService],
