@@ -144,7 +144,7 @@ export class MetaPixelService {
       );
 
       this.logger.log(
-        `✅ ${this.isTestMode ? 'TEST ' : ''}Purchase event sent for order: ${data.orderId}, Amount: ${data.currency} ${data.amount}`,
+        `✅ ${this.isTestMode ? 'TEST ' : ''}Purchase event sent for order: ${data.orderId}, Amount: ${data.currency} ${data.amount}, fpc: ${data.fbc}, fbp: ${data.fbp}`,
       );
 
       return true;
