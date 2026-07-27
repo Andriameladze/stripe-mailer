@@ -96,6 +96,8 @@ export class StripeController {
           pixelId: productConfig.meta.pixelId,
         });
 
+        this.logger.log(`metadata: ${JSON.stringify(metadata)}`);
+
         this.logger.log(
           `Processed order: ${orderId} for ${email} (${productConfig.name})`,
         );
