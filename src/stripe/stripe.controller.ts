@@ -43,6 +43,7 @@ export class StripeController {
       const session = event.data.object as Stripe.Checkout.Session;
       // metadata is embedded directly on the session object in the webhook
       // payload — no need to re-fetch/expand the session to read it.
+      this.logger.log(`checkout.session.completed: ${JSON.stringify(session)}`);
       const metadata = session.metadata || {};
       const paymentLinkId = session.payment_link as string | null;
 
