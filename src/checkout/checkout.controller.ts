@@ -19,6 +19,13 @@ interface CreateSessionBody {
   fbp?: string;
 }
 
+interface ClientErrorBody {
+  error?: string;
+  userAgent?: string;
+  url?: string;
+  timestamp?: string;
+}
+
 @Controller('checkout')
 export class CheckoutController {
   private readonly logger = new Logger(CheckoutController.name);
@@ -85,5 +92,20 @@ export class CheckoutController {
         .status(HttpStatus.INTERNAL_SERVER_ERROR)
         .json({ error: 'Failed to create checkout session' });
     }
+  }
+
+  @Post('client-error')
+  logClientError(@Body() body: ClientErrorBody, @Res() res: express.Response) {
+    try {
+      const { error, userAgent, url, timestamp } =
+        body || ({} as ClientErrorBody);
+      this.logger.warn(
+        `CHECKOUT_FALLBACK_ERROR: error="${error}" ua="${userAgent}" url="${url}" timestamp="${timestamp}"`,
+      );
+    } catch {
+      // Best-effort diagnostic logging — never let this endpoint fail.
+    }
+
+    return res.status(HttpStatus.OK).json({ received: true });
   }
 }
