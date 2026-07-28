@@ -2,9 +2,11 @@
 import {
   Body,
   Controller,
+  Get,
   HttpStatus,
   Logger,
   Post,
+  Query,
   Req,
   Res,
 } from '@nestjs/common';
@@ -91,6 +93,68 @@ export class CheckoutController {
       return res
         .status(HttpStatus.INTERNAL_SERVER_ERROR)
         .json({ error: 'Failed to create checkout session' });
+    }
+  }
+
+  // Top-level browser navigation entry point (GET) — the customer's browser is
+  // navigated directly here instead of doing a cross-site fetch() from the
+  // frontend. Safari ITP / in-app browsers block the cross-site POST + redirect,
+  // but a top-level GET navigation is not a CORS request and is not blocked.
+  @Get('start')
+  async start(
+    @Req() req: express.Request,
+    @Query('productId') productId: string,
+    @Query('fbc') fbc: string,
+    @Query('fbp') fbp: string,
+    @Res() res: express.Response,
+  ) {
+    const fallbackPaymentLink =
+      'https://buy.stripe.com/4gM00iaDx6eL0lY4CTgrS03';
+
+    const productConfig = productId
+      ? getProductConfigByProductId(productId)
+      : undefined;
+
+    if (!productConfig || !productConfig.priceId) {
+      this.logger.warn(`Unknown or unpriced productId: ${productId}`);
+      return res.redirect(HttpStatus.FOUND, fallbackPaymentLink);
+    }
+
+    // This route is hit directly by the customer's browser via top-level
+    // navigation, unlike the Stripe webhook — so req.ip / user-agent here are
+    // the real customer values. Trust proxy is enabled for Railway.
+    const ipAddress = req.ip || req.socket.remoteAddress || '';
+    const userAgent = req.headers['user-agent'] || '';
+    const eventId = crypto.randomUUID();
+
+    const frontendOrigin = process.env.FRONTEND_ORIGIN;
+
+    try {
+      const session = await this.stripe.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [{ price: productConfig.priceId, quantity: 1 }],
+        // Single index.html frontend, no dedicated /success or /cancel routes —
+        // redirect back to the same page with a query flag instead.
+        success_url: `${frontendOrigin}/?purchase=success`,
+        cancel_url: `${frontendOrigin}/?purchase=cancelled`,
+        metadata: {
+          fbc: fbc || '',
+          fbp: fbp || '',
+          ip: ipAddress,
+          userAgent,
+          eventId,
+          productId,
+        },
+      });
+
+      return res.redirect(HttpStatus.SEE_OTHER, session.url!);
+    } catch (err: any) {
+      this.logger.error(
+        `Failed to create checkout session for productId=${productId}: ${err.message}`,
+        err.stack,
+      );
+      // Never lose a sale — fall back to the static Payment Link.
+      return res.redirect(HttpStatus.FOUND, fallbackPaymentLink);
     }
   }
 
