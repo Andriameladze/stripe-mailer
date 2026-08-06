@@ -43,7 +43,6 @@ export class StripeController {
       const session = event.data.object as Stripe.Checkout.Session;
       // metadata is embedded directly on the session object in the webhook
       // payload — no need to re-fetch/expand the session to read it.
-      this.logger.log(`checkout.session.completed: ${JSON.stringify(session)}`);
       const metadata = session.metadata || {};
       const paymentLinkId = session.payment_link as string | null;
 
@@ -67,11 +66,24 @@ export class StripeController {
       const email = session.customer_details?.email || session.customer_email;
 
       if (email) {
-        await this.email.sendEmail(email, productConfig.email);
+        const orderId = session.id;
+
+        // Order bump ($7 add-on). metadata.bump is stamped by the checkout
+        // start route as the string 'true'/'false'. Treat anything other than
+        // exactly 'true' (including missing/undefined) as no bump.
+        const bump = metadata.bump === 'true';
+        const extraAttachmentFilenames = bump
+          ? ['3D-Printing-Success_STL-Planet.pdf']
+          : [];
+
+        await this.email.sendEmail(
+          email,
+          productConfig.email,
+          extraAttachmentFilenames,
+        );
 
         const amount = session.amount_total ? session.amount_total / 100 : 0;
         const currency = session.currency?.toUpperCase() || 'USD';
-        const orderId = session.id;
         // eventId is minted by create-session at checkout start (crypto.randomUUID()),
         // before Stripe's session even exists — see rationale in the accompanying
         // report. Falls back to Stripe's session id for legacy Payment Link sessions,

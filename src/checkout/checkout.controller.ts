@@ -106,6 +106,7 @@ export class CheckoutController {
     @Query('productId') productId: string,
     @Query('fbc') fbc: string,
     @Query('fbp') fbp: string,
+    @Query('bump') bump: string, // NEW
     @Res() res: express.Response,
   ) {
     const fallbackPaymentLink =
@@ -120,21 +121,29 @@ export class CheckoutController {
       return res.redirect(HttpStatus.FOUND, fallbackPaymentLink);
     }
 
-    // This route is hit directly by the customer's browser via top-level
-    // navigation, unlike the Stripe webhook — so req.ip / user-agent here are
-    // the real customer values. Trust proxy is enabled for Railway.
     const ipAddress = req.ip || req.socket.remoteAddress || '';
     const userAgent = req.headers['user-agent'] || '';
     const eventId = crypto.randomUUID();
-
     const frontendOrigin = process.env.FRONTEND_ORIGIN;
+
+    const includeBump = bump === 'true';
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+      { price: productConfig.priceId, quantity: 1 },
+    ];
+    if (includeBump) {
+      if (productConfig.bumpPriceId) {
+        lineItems.push({ price: productConfig.bumpPriceId, quantity: 1 });
+      } else {
+        this.logger.warn(
+          `No bump configured for productId=${productId} — skipping bump item`,
+        );
+      }
+    }
 
     try {
       const session = await this.stripe.checkout.sessions.create({
         mode: 'payment',
-        line_items: [{ price: productConfig.priceId, quantity: 1 }],
-        // Single index.html frontend, no dedicated /success or /cancel routes —
-        // redirect back to the same page with a query flag instead.
+        line_items: lineItems, // CHANGED
         success_url: `${frontendOrigin}/?purchase=success`,
         cancel_url: `${frontendOrigin}/?purchase=cancelled`,
         metadata: {
@@ -144,6 +153,7 @@ export class CheckoutController {
           userAgent,
           eventId,
           productId,
+          bump: includeBump ? 'true' : 'false', // NEW — webhook reads this later
         },
       });
 
@@ -153,7 +163,6 @@ export class CheckoutController {
         `Failed to create checkout session for productId=${productId}: ${err.message}`,
         err.stack,
       );
-      // Never lose a sale — fall back to the static Payment Link.
       return res.redirect(HttpStatus.FOUND, fallbackPaymentLink);
     }
   }

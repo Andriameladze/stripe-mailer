@@ -17,6 +17,7 @@ export interface ProductConfig {
   name: string;
   /** Stable key used by the checkout-session endpoint (e.g. 'stl', 'cnc') */
   productId: string;
+  bumpPriceId?: string;
   /** Underlying Stripe Price ID used to create dynamic Checkout Sessions */
   priceId?: string;
   email: ProductEmailConfig;
@@ -101,6 +102,7 @@ const PRODUCTS: ProductConfig[] = [
     name: 'STL Planet Bundle',
     productId: 'stl',
     priceId: process.env.STL_PRICE_ID,
+    bumpPriceId: process.env.STL_GUIDE_PRICE_ID, // NEW
     email: {
       project: 'STL Bundle',
       subject: 'Order - STL Planet',

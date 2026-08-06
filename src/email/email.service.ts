@@ -8,10 +8,17 @@ import { ProductEmailConfig } from '../stripe/product-configs';
 export class EmailService {
   private resend = new Resend(process.env.RESEND_API_KEY);
 
-  async sendEmail(customerEmail: string, config: ProductEmailConfig) {
+  async sendEmail(
+    customerEmail: string,
+    config: ProductEmailConfig,
+    extraAttachmentFilenames: string[] = [],
+  ) {
     const assetsDir = path.join(process.cwd(), 'assets');
 
-    const attachments = config.attachmentFilenames.map((filename) => ({
+    const attachments = [
+      ...config.attachmentFilenames,
+      ...extraAttachmentFilenames,
+    ].map((filename) => ({
       filename,
       content: fs.readFileSync(path.join(assetsDir, filename)),
     }));
